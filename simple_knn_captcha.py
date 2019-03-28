@@ -1,4 +1,8 @@
 # coding: UTF-8
+"""
+User: 五根弦的吉他
+function：simple knn识别简单验证码（纯数字、无扭曲、无遮挡、排列整齐）
+"""
 import numpy as np
 import math
 from scipy.misc import imread
@@ -72,6 +76,7 @@ def change_all_img(folderpath):
         }
 
 """
+# 这样直接拼接起来也会出错，虽不报错，但最后得到的数据是错的
 def concat(generator):
     for index, item in enumerate(generator):
         if index==0:
@@ -100,9 +105,9 @@ def concat(generator):
 
 
 if __name__ == '__main__':
-    data_folder = '/home/cgh/PycharmProjects/untitled1/KNN/knn_captcha/data'
+    data_folder = './data'
  
-    test_data_path = '/home/cgh/PycharmProjects/untitled1/KNN/knn_captcha/CheckCode.aspx'
+    test_data_path = './test/test3.aspx'
     #data, label = concat(change_all_img(data_folder))
     concat(change_all_img(data_folder))
     DATA = np.load('data.npz')
