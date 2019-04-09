@@ -2,11 +2,22 @@
 """
 User: 五根弦的吉他
 function：simple knn识别简单验证码（纯数字、无扭曲、无遮挡、排列整齐）
+核心： 样本与标签分开保存；argsort的使用；样本与标签的索引是对应起来的
+
 """
 import numpy as np
 import math
 from scipy.misc import imread
 import os
+
+
+def accuracy(real_str, prediction):
+    global count
+    # print('predicton:', ''.join(prediction))
+    # print('real_str:', real_str)
+    if real_str == ''.join(prediction):
+        count += 1
+    return count
 
 
 def knn(k, pure_data, labels, test_data):
@@ -21,29 +32,35 @@ def knn(k, pure_data, labels, test_data):
     if type(test_data) is not list:
         test_data = list(test_data)
     for each in test_data:
-        res = np.tile(each, (pure_data.shape[0], 1)) - pure_data
+        res = np.tile(each, (pure_data.shape[0], 1)) - pure_data   # 结果仍是二维数组
         #math.sqrt(np.sum(res**2, axis=1))
         distance = np.sum(res ** 2, axis=1)**0.5
 
-        sorted_index = distance.argsort()  # 返回从小到大排序后的数据的在原数组中的下标
+        sorted_index = distance.argsort()  # argsort返回从小到大排序后的数据的在原数组中的下标,只能用于array
         count_dict = {}
         """
         # 这样写会出错，why？？？数目对应不起来
         count_dict = {labels[sorted_index[i]]: count_dict.get(labels[sorted_index[i]], 0) + 1 for i in range(k)}
         onesort = sorted(count_dict.items(), key=lambda x: x[1], reverse=True)
         """
-
+        # 取前k个距离小的
         for i in range(k):
             count_dict[label[sorted_index[i]]] = count_dict.get(labels[sorted_index[i]], 0) + 1
         onesort = sorted(count_dict.items(), key=lambda x: x[1], reverse=True)
 
-        
+        """
+        import operator
+        sortedClassCount = sorted(count_dict.items(), key=operator.itemgetter(1), reverse=True)
+        temp = sortedClassCount[0][0]
+        """
         print("count_dict:\n", onesort)
         #print("sortedclascount:\n", sortedClassCount)
-        print("{}的类别是：{}".format(test_data_path, onesort[0][0]))
-        predict_labels.append(onesort[0][1])
+        #print("{}的类别是：{}".format(each_test_file, onesort[0][0]))
+        predict_labels.append(onesort[0][0])
+    print("{0}的预测类别是：{1}".format(each_test_file[-10:], predict_labels))
+    count = accuracy(real_str=each_test_file[-10:-5], prediction=predict_labels)
 
-    return predict_labels
+    return count
 
 
 def chg_img2data(img_path):
@@ -65,7 +82,6 @@ def chg_img2data(img_path):
 
 
 def change_all_img(folderpath):
-    # 对文件夹下所有图片进行处理
     label_list = []
     for filename in os.listdir(folderpath):
         print(filename)
@@ -75,43 +91,34 @@ def change_all_img(folderpath):
             'label_list': label_list
         }
 
-"""
-# 这样直接拼接起来也会出错，虽不报错，但最后得到的数据是错的
-def concat(generator):
-    for index, item in enumerate(generator):
-        if index==0:
-            new_vstack = item['each_vstack']
-            print("vstack:\n", item['each_vstack'])
-            continue
-        print("v_stack:\n", item['each_vstack'])
-        new_vstack = np.vstack((item['each_vstack'], new_vstack))
-        label_list = item['label_list']
-    print('new_vstack:\n', new_vstack)
-    print('shape of new_vstack:', new_vstack.shape)
-    print('label_list:\n', label_list)
-    label = np.array(label_list)
-    print("label:\n", label)
-    return new_vstack, label
-"""
 
 
 def concat(generator):
     datax = []
     for index, item in enumerate(generator):
         datax.extend(item['each_vstack'])
+        # print(datax)
         label = item['label_list']
     print("label_list:\n", label)
-    np.savez('data.npz', dataimg=datax, label=label)
+    # 保存转化后的样本数据与标签到一个npz压缩文件
+    np.savez('data.npz', dataimg=datax, label=label)      # dataimg和label是自己起的名字
+
 
 
 if __name__ == '__main__':
     data_folder = './data'
- 
-    test_data_path = './test/test3.aspx'
-    #data, label = concat(change_all_img(data_folder))
+
+    test_data_path = './test'
+
     concat(change_all_img(data_folder))
     DATA = np.load('data.npz')
     data = DATA['dataimg']
     label = DATA['label']
-    knn(k=5, pure_data=data, labels=label, test_data=chg_img2data(test_data_path))
+    count = 0
+    for each_test_file in os.listdir(test_data_path):
+        count = knn(k=5, pure_data=data, labels=label,
+                    test_data=chg_img2data(os.path.join(test_data_path, each_test_file)))
+
+    print("识别精度为：", count/len(os.listdir(test_data_path)))
+
 
